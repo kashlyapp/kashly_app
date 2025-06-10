@@ -33,13 +33,37 @@ migrate_working_dir/
 .pub/
 /build/
 
-# Symbolication related
-app.*.symbols
+# iOS specific
+**/ios/Pods/
+**/ios/.symlinks/
+**/ios/Flutter/App.framework
+**/ios/Flutter/Flutter.framework
+# Ja tens GeneratedPluginRegistrant.* cobert per una regla més general, però per ser explícit:
+# **/ios/Runner/GeneratedPluginRegistrant.*
+**/ios/Flutter/Generated.xcconfig
+**/ios/Flutter/flutter_export_environment.sh
+# Podfile.lock és opcional, molts el regeneren
+# ios/Podfile.lock 
 
-# Obfuscation related
-app.*.map.json
-
-# Android Studio will place build artifacts here
+# Android specific
 /android/app/debug
 /android/app/profile
-/android/app/release
+/android/app/release/
+/android/.gradle
+/android/gradle/
+# local.properties hauria de ser ignorat ja que conté camins locals
+/android/local.properties
+# key.properties conté claus de signatura, MAI s'hauria de pujar a un repo públic
+/android/key.properties
+
+# macOS specific
+**/macos/Pods/
+**/macos/.symlinks/
+**/macos/Flutter/Flutter.framework
+# macos/Podfile.lock (opcional, com a iOS)
+
+# Windows specific
+# ... (si apliqués)
+
+# Build artifacts
+# ... (ja tens /build/)
