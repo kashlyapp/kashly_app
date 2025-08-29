@@ -1,0 +1,23 @@
+name: CI
+on: [push, pull_request]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.x'
+      - name: Flutter pub get
+        run: flutter pub get
+      - name: Analyze
+        run: flutter analyze
+      - name: Test with coverage
+        run: flutter test --coverage
+      - name: Enforce 70% coverage
+        run: |
+          sudo apt-get update && sudo apt-get install -y lcov
+          LINES=$(lcov --summary coverage/lcov.info 2>/dev/null | awk '/lines/ {print $(NF-1)}' | tr -d '%')
+          echo "Line coverage: $LINES%"
+          THRESHOLD=70
+          awk -v l=$LINES -v t=$THRESHOLD 'BEGIN{exit (l+0<t)}'
