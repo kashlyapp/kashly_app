@@ -7,7 +7,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.x'
+          flutter-version: '3.24.0'
       - name: Flutter pub get
         run: flutter pub get
       - name: Analyze
@@ -16,8 +16,17 @@ jobs:
         run: flutter test --coverage
       - name: Enforce 70% coverage
         run: |
+          set -euo pipefail
           sudo apt-get update && sudo apt-get install -y lcov
+          if [ ! -f coverage/lcov.info ]; then
+            echo "coverage/lcov.info not found" >&2
+            exit 1
+          fi
           LINES=$(lcov --summary coverage/lcov.info 2>/dev/null | awk '/lines/ {print $(NF-1)}' | tr -d '%')
-          echo "Line coverage: $LINES%"
+          if [ -z "${LINES:-}" ]; then
+            echo "Could not parse line coverage from lcov summary" >&2
+            exit 1
+          fi
+          echo "Line coverage: ${LINES}%"
           THRESHOLD=70
-          awk -v l=$LINES -v t=$THRESHOLD 'BEGIN{exit (l+0<t)}'
+          awk -v l="${LINES}" -v t="${THRESHOLD}" 'BEGIN{exit (l+0<t)}'
