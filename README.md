@@ -23,6 +23,16 @@ For help getting started with Flutter development, view the
 [online documentation](https://docs.flutter.dev/), which offers tutorials,
 samples, guidance on mobile development, and a full API reference.
 
+## FVM (Flutter Version Manager)
+
+Recomanat per fixar la versió de Flutter a l'entorn de desenvolupament i CI.
+
+- Instal·la FVM: `dart pub global activate fvm`
+- Usa la versió configurada (3.24.0): `fvm use 3.24.0 --force`
+- Executa comandes amb FVM: `fvm flutter pub get`, `fvm flutter test`
+
+Arxiu de configuració: `.fvm/fvm_config.json`
+
 ## Execució i configuració ràpida
 
 Variables d'entorn via `--dart-define`:
