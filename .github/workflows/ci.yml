@@ -38,13 +38,15 @@ jobs:
       - name: Filter coverage to project lib
         run: |
           lcov --extract coverage/lcov.info \
-            "$(pwd)/lib/*" \
-            "$(pwd)/lib/**" \
-            -o coverage/lcov.info
+            "lib/*" \
+            "lib/**" \
+            -o coverage/lcov.info \
+            --ignore-errors unused,empty
           lcov --remove coverage/lcov.info \
-            "$(pwd)/lib/**.g.dart" \
-            "$(pwd)/lib/firebase_options.dart" \
-            -o coverage/lcov.info
+            "lib/**.g.dart" \
+            "lib/firebase_options.dart" \
+            -o coverage/lcov.info \
+            --ignore-errors unused,empty
           lcov --summary coverage/lcov.info
 
       - name: Enforce coverage >= 70%
