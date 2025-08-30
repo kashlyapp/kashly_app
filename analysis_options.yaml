@@ -5,21 +5,17 @@
 # IDEs (https://dart.dev/tools#ides-and-editors). The analyzer can also be
 # invoked from the command line by running `flutter analyze`.
 
-# Usa lints generales (no depende de flutter_lints)
 include: package:lints/recommended.yaml
 
 analyzer:
-  # Exclou fitxers de l'app complexa per no requerir dependències addicionals
   exclude:
-    - android/**
-    - ios/**
-    - linux/**
-    - macos/**
-    - windows/**
-    - web/**
-    - build/**
-    - coverage/**
-    - lib/**
+    - "**/*.g.dart"
+    - "lib/firebase_options.dart"
+
+linter:
+  rules:
+    avoid_print: true
+    prefer_const_constructors: true
 
 linter:
   # The lint rules applied to this project can be customized in the
