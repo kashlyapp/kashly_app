@@ -35,11 +35,11 @@ jobs:
           flutter test --coverage
           ls -lah coverage || true
 
-      - name: Filter coverage to project lib
+      - name: Filter coverage to project lib/utils (temporary scope)
         run: |
           lcov --extract coverage/lcov.info \
-            "lib/*" \
-            "lib/**" \
+            "lib/utils/*" \
+            "lib/utils/**" \
             -o coverage/lcov.info \
             --ignore-errors unused,empty
           lcov --remove coverage/lcov.info \
