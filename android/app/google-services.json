@@ -12,7 +12,20 @@
           "package_name": "com.example.kashly_app"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "143620188181-38q8s8e148n1rcuotn6jvn250or0rc47.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.kashly_app",
+            "certificate_hash": "17590a3d5acac49ebd113540bd1b3b0198ef1cf3"
+          }
+        },
+        {
+          "client_id": "143620188181-j3qidtvf8i7atg1s69b75jeuqe166q3s.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyBr6-OctdBd-znT_w97fViUnPhE27UAL44"
@@ -20,7 +33,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "143620188181-j3qidtvf8i7atg1s69b75jeuqe166q3s.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "143620188181-dsjfbs94q0tevlcrgqq73qgl86opgeg9.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.kashlyApp"
+              }
+            }
+          ]
         }
       }
     }

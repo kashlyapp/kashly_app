@@ -52,7 +52,7 @@ class DefaultFirebaseOptions {
     messagingSenderId: '143620188181',
     projectId: 'kashly-511bc',
     authDomain: 'kashly-511bc.firebaseapp.com',
-    storageBucket: 'kashly-511bc.appspot.com',
+    storageBucket: 'kashly-511bc.firebasestorage.app',
     measurementId: 'G-Q32QHL3161',
   );
 
@@ -61,7 +61,7 @@ class DefaultFirebaseOptions {
     appId: '1:143620188181:android:c6fd488e499556f0f3461c',
     messagingSenderId: '143620188181',
     projectId: 'kashly-511bc',
-    storageBucket: 'kashly-511bc.appspot.com',
+    storageBucket: 'kashly-511bc.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
@@ -69,7 +69,8 @@ class DefaultFirebaseOptions {
     appId: '1:143620188181:ios:64245f0290eaaa8af3461c',
     messagingSenderId: '143620188181',
     projectId: 'kashly-511bc',
-    storageBucket: 'kashly-511bc.appspot.com',
-    iosBundleId: 'com.example.kashlyapp',
+    storageBucket: 'kashly-511bc.firebasestorage.app',
+    iosBundleId: 'com.example.kashlyApp',
   );
+
 }

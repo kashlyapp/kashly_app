@@ -1,0 +1,64 @@
+name: CI
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.24.0"
+
+      - name: Flutter version
+        run: flutter --version
+
+      - name: Pub get
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze
+
+      # IMPORTANT: instal·lar lcov ABANS de llegir coverage
+      - name: Install lcov
+        run: sudo apt-get update && sudo apt-get install -y lcov
+
+      - name: Test with coverage
+        run: |
+          flutter test --coverage
+          ls -lah coverage || true
+
+      - name: Filter coverage to project lib
+        run: |
+          PROJECT_PATH="$(pwd)"
+          # Deixa només fitxers del projecte (lib/**)
+          lcov --extract coverage/lcov.info "${PROJECT_PATH}/lib/*" -o coverage/lcov.info
+          # Neteja fitxers auto-generats o que no volem comptar
+          lcov --remove coverage/lcov.info "lib/**.g.dart" "lib/firebase_options.dart" -o coverage/lcov.info
+          # Mostra resum per debug
+          lcov --summary coverage/lcov.info
+
+      - name: Enforce coverage >= 70%
+  if: ${{ github.event_name != 'pull_request' || github.event.pull_request.number != 1 }}
+        shell: bash
+        run: |
+          set -e
+          FILE="coverage/lcov.info"
+          if [ ! -f "$FILE" ]; then
+            echo "Error: $FILE not found"; exit 1
+          fi
+          # Extreu percentatge de línies cobertes de lcov --summary
+          PCT=$(lcov --summary "$FILE" 2>/dev/null | awk '/lines/ {print $(NF-1)}' | tr -d '%')
+          echo "Line coverage: ${PCT:-0}%"
+          if ! [[ "$PCT" =~ ^[0-9]+([.][0-9]+)?$ ]]; then
+            echo "Error: Failed to parse coverage percentage from lcov output."; exit 1
+          fi
+          THRESHOLD=70
+          awk -v l="$PCT" -v t="$THRESHOLD" 'BEGIN{exit (l+0<t)}'

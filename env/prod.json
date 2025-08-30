@@ -1,0 +1,5 @@
+{
+  "APP_CHECK_WEB_SITE_KEY": "your-web-key-here",
+  "FORCE_LOGOUT_ON_START": "false",
+  "FLAVOR": "prod"
+}
