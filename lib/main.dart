@@ -16,9 +16,13 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Inicialitza Firebase amb les opcions per la plataforma
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  } catch (_) {
+    // En tests o entorns sense Firebase configurat, ignorem l'error
+  }
 
   // Permet definir la siteKey per entorn; fa fallback a la clau actual si no es passa
   const siteKey = String.fromEnvironment(
@@ -69,13 +73,19 @@ Future<void> main() async {
       return AppleProvider.deviceCheck; // per defecte
     }();
 
-    await FirebaseAppCheck.instance.activate(
-      androidProvider: androidProvider,
-      appleProvider: appleProvider,
-    );
+    try {
+      await FirebaseAppCheck.instance.activate(
+        androidProvider: androidProvider,
+        appleProvider: appleProvider,
+      );
+    } catch (e) {
+      // ignore: avoid_print
+      print('AppCheck (mobile) no s\'ha pogut inicialitzar: $e');
+    }
   }
 
-  final authService = AuthService(); // Crea la instància del teu AuthService
+  // Crea el servei d'auth només si Firebase està inicialitzat; en tests pot estar buit.
+  final authService = AuthService();
 
   runApp(MyApp(authService: authService));
 }

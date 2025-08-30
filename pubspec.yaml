@@ -9,6 +9,13 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  firebase_core: any
+  firebase_auth: any
+  firebase_app_check: any
+  cloud_firestore: any
+  flutter_bloc: any
+  equatable: any
+  bloc: any
 
 dev_dependencies:
   flutter_test:

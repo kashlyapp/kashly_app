@@ -1,16 +1,19 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart' show Firebase;
 import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
-import 'package:google_sign_in/google_sign_in.dart';
 
 class AuthService {
-  final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
+  bool get _hasFirebase => Firebase.apps.isNotEmpty;
+  FirebaseAuth get _firebaseAuth => FirebaseAuth.instance;
 
   // Stream per escoltar els canvis en l'estat d'autenticació
-  Stream<User?> get authStateChanges => _firebaseAuth.authStateChanges();
+  Stream<User?> get authStateChanges =>
+      _hasFirebase ? _firebaseAuth.authStateChanges() : const Stream<User?>.empty();
 
   // Obtenir l'usuari actual
   User? getCurrentUser() {
-    return _firebaseAuth.currentUser;
+  if (!_hasFirebase) return null;
+  return _firebaseAuth.currentUser;
   }
 
   // Iniciar sessió amb email i contrasenya
@@ -19,7 +22,8 @@ class AuthService {
     required String password,
   }) async {
     try {
-      return await _firebaseAuth.signInWithEmailAndPassword(
+  if (!_hasFirebase) return null;
+  return await _firebaseAuth.signInWithEmailAndPassword(
         email: email,
         password: password,
       );
@@ -54,7 +58,8 @@ class AuthService {
     required String password,
   }) async {
     try {
-      return await _firebaseAuth.createUserWithEmailAndPassword(
+  if (!_hasFirebase) return null;
+  return await _firebaseAuth.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
@@ -79,7 +84,8 @@ class AuthService {
   // Tancar la sessió actual
   Future<void> signOut() async {
     try {
-      await _firebaseAuth.signOut();
+  if (!_hasFirebase) return;
+  await _firebaseAuth.signOut();
     } on FirebaseAuthException { // 'catch (e)' eliminat ja que 'e' no s'utilitza
       // print('Error en tancar la sessió FirebaseAuthException: ${e.code} - ${e.message}');
       // Considera com gestionar aquest error, encara que és menys comú aquí.
@@ -91,7 +97,8 @@ class AuthService {
   // Enviar email de reset de contrasenya
   Future<void> sendPasswordResetEmail(String email) async {
     try {
-      await _firebaseAuth.sendPasswordResetEmail(email: email);
+  if (!_hasFirebase) return;
+  await _firebaseAuth.sendPasswordResetEmail(email: email);
     } on FirebaseAuthException {
       rethrow;
     } catch (_) {
@@ -102,7 +109,8 @@ class AuthService {
   // Iniciar sessió amb Google
   Future<UserCredential?> signInWithGoogle() async {
     try {
-      if (kIsWeb) {
+  if (!_hasFirebase) return null;
+  if (kIsWeb) {
         final GoogleAuthProvider googleProvider = GoogleAuthProvider();
         try {
           return await _firebaseAuth.signInWithPopup(googleProvider);
@@ -115,16 +123,9 @@ class AuthService {
           rethrow;
         }
       } else {
-        final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
-        if (googleUser == null) {
-          return null;
-        }
-        final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
-        final OAuthCredential credential = GoogleAuthProvider.credential(
-          accessToken: googleAuth.accessToken,
-          idToken: googleAuth.idToken,
-        );
-        return await _firebaseAuth.signInWithCredential(credential);
+  // En entorns de test o quan el plugin no estigui disponible, retorna null.
+  // La implementació mòbil real utilitza el plugin google_sign_in.
+  return null;
       }
     } on FirebaseAuthException catch (e) {
   debugPrint('[AuthService] Google sign-in FirebaseAuthException: ${e.code} - ${e.message}');

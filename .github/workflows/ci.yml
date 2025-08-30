@@ -37,12 +37,14 @@ jobs:
 
       - name: Filter coverage to project lib
         run: |
-          PROJECT_PATH="$(pwd)"
-          # Deixa només fitxers del projecte (lib/**)
-          lcov --extract coverage/lcov.info "${PROJECT_PATH}/lib/*" -o coverage/lcov.info
-          # Neteja fitxers auto-generats o que no volem comptar
-          lcov --remove coverage/lcov.info "lib/**.g.dart" "lib/firebase_options.dart" -o coverage/lcov.info
-          # Mostra resum per debug
+          lcov --extract coverage/lcov.info \
+            "$(pwd)/lib/*" \
+            "$(pwd)/lib/**" \
+            -o coverage/lcov.info
+          lcov --remove coverage/lcov.info \
+            "$(pwd)/lib/**.g.dart" \
+            "$(pwd)/lib/firebase_options.dart" \
+            -o coverage/lcov.info
           lcov --summary coverage/lcov.info
 
       - name: Enforce coverage >= 70%
