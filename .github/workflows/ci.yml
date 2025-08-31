@@ -35,38 +35,30 @@ jobs:
       - name: Test with coverage
         run: flutter test --coverage
 
-      - name: Filter coverage to lib
-        run: |
-          set -e
-          LCOV="coverage/lcov.info"
-          PROJ="$(pwd)"
-          if [ ! -f "$LCOV" ]; then
-            echo "ERROR: $LCOV not found"; exit 1
-          fi
-          # Inclou tot lib/**
-          lcov --extract "$LCOV" "$PROJ/lib/*" "$PROJ/lib/**" -o "$LCOV" || true
-          # Exclou generats i firebase_options.dart
-          lcov --remove "$LCOV" "$PROJ/lib/**.g.dart" "$PROJ/lib/firebase_options.dart" -o "$LCOV" || true
-          echo "Filtered summary:" && lcov --summary "$LCOV"
 
       - name: Enforce coverage ≥ 70%
+        shell: bash
         run: |
           set -euo pipefail
           THRESHOLD=70
+          TRACE="coverage/lcov.info"
 
-          test -f coverage/lcov.info || { echo "Error: coverage/lcov.info not found (did you run tests with --coverage?)."; exit 1; }
+          # Comprova que hi ha cobertura
+          test -f "$TRACE" || { echo "Error: $TRACE not found (did you run tests with --coverage?)."; exit 1; }
 
-          lcov --extract coverage/lcov.info "$(pwd)/lib/*" -o coverage/lcov.info --ignore-errors empty || true
-          lcov --remove  coverage/lcov.info "$(pwd)/lib/**.g.dart" "$(pwd)/lib/firebase_options.dart" -o coverage/lcov.info --ignore-errors unused || true
+          # Normalitza cobertura: filtra a lib/ i exclou generats; ignora 'empty/unused'
+          lcov --extract "$TRACE" "$(pwd)/lib/*" -o "$TRACE" --ignore-errors empty,unused || true
+          lcov --remove  "$TRACE" "$(pwd)/lib/**.g.dart" "$(pwd)/lib/firebase_options.dart" -o "$TRACE" --ignore-errors empty,unused || true
 
-          echo "lcov summary:"
-          lcov --summary coverage/lcov.info
+          echo "::group::lcov summary"
+          lcov --summary "$TRACE" || true
+          echo "::endgroup::"
 
-          PCT="$(lcov --summary coverage/lcov.info | awk '/^ *lines\.*:/ {print $2}' | tr -d '%')"
-          echo "Line coverage: ${PCT}%"
+          # Extreu el % de línies del summary
+          PCT="$(lcov --summary "$TRACE" 2>/dev/null | awk '/^ *lines\\.*:/ {gsub(\"%\",\"\",$2); print $2; exit}')"
+          [ -n "$PCT" ] || { echo "Parse error: no 'lines' in summary (did tests hit lib/*?)"; exit 1; }
 
-          [[ "$PCT" =~ ^[0-9]+(\.[0-9]+)?$ ]] || { echo "Parse error reading coverage percentage from lcov summary"; exit 1; }
-
-          awk -v p="$PCT" -v t="$THRESHOLD" 'BEGIN { if (p+0 < t+0) exit 1 }' \
+          # Compara amb el llindar
+          awk -v p="$PCT" -v t="$THRESHOLD" 'BEGIN{exit (p+0 < t+0)}' \
             && echo "✅ Coverage ${PCT}% ≥ ${THRESHOLD}% (pass)" \
             || { echo "❌ Coverage ${PCT}% < ${THRESHOLD}% (fail)"; exit 1; }
