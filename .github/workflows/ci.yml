@@ -40,17 +40,33 @@ jobs:
         run: |
           set -euo pipefail
           LCOV="coverage/lcov.info"
+          TARGET_DIR="lib/utils/"
           if [ ! -f "$LCOV" ]; then
             echo "::error::Missing $LCOV. Did tests run with --coverage?"
             exit 1
           fi
-          awk -v threshold=70 '
-            BEGIN { hit=0; total=0; inlib=0 }
-            /^SF:/ { inlib = ($0 ~ /^SF:lib\// || $0 ~ /\/lib\//) ? 1 : 0; next }
-            inlib && /^DA:/ { split($0,a,":"); split(a[2],b,","); total++; if (b[2] > 0) hit++ }
+          awk -v threshold=70 -v target="$TARGET_DIR" '
+            BEGIN { hit=0; total=0; in_tgt=0 }
+            /^SF:/ {
+              in_tgt = (index($0, target) > 0) ? 1 : 0
+              next
+            }
+            in_tgt && /^DA:/ {
+              split($0,a,":"); split(a[2],b,",");
+              total++
+              if (b[2] > 0) hit++
+              next
+            }
             END {
-              if (total==0) { print "Line coverage: 0%"; print "No lines under lib/ found in coverage. Check test imports (package:<app>/...)"; exit 1 }
+              if (total==0) {
+                printf("Line coverage: 0%%\n")
+                printf("No lines found under %s in coverage. Check that tests import package:<app>/... hitting lib/utils/*\n", target)
+                exit 1
+              }
               pct = (100.0*hit/total)
               printf("Line coverage: %.1f%%\n", pct)
-              if (pct + 1e-9 < threshold) { print "Coverage below threshold (" threshold "%)"; exit 1 }
+              if (pct + 1e-9 < threshold) {
+                printf("Coverage below threshold (%d%%)\n", threshold)
+                exit 1
+              }
             }' "$LCOV"
