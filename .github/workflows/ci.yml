@@ -37,28 +37,25 @@ jobs:
 
 
       - name: Enforce coverage ≥ 70%
-        shell: bash
+        env:
+          THRESHOLD: 70
         run: |
           set -euo pipefail
-          THRESHOLD=70
-          TRACE="coverage/lcov.info"
-
-          # Comprova que hi ha cobertura
-          test -f "$TRACE" || { echo "Error: $TRACE not found (did you run tests with --coverage?)."; exit 1; }
-
-          # Normalitza cobertura: filtra a lib/ i exclou generats; ignora 'empty/unused'
-          lcov --extract "$TRACE" "$(pwd)/lib/*" -o "$TRACE" --ignore-errors empty,unused || true
-          lcov --remove  "$TRACE" "$(pwd)/lib/**.g.dart" "$(pwd)/lib/firebase_options.dart" -o "$TRACE" --ignore-errors empty,unused || true
-
-          echo "::group::lcov summary"
-          lcov --summary "$TRACE" || true
-          echo "::endgroup::"
-
-          # Extreu el % de línies del summary
-          PCT="$(lcov --summary "$TRACE" 2>/dev/null | awk '/^ *lines\\.*:/ {gsub(\"%\",\"\",$2); print $2; exit}')"
-          [ -n "$PCT" ] || { echo "Parse error: no 'lines' in summary (did tests hit lib/*?)"; exit 1; }
-
-          # Compara amb el llindar
-          awk -v p="$PCT" -v t="$THRESHOLD" 'BEGIN{exit (p+0 < t+0)}' \
-            && echo "✅ Coverage ${PCT}% ≥ ${THRESHOLD}% (pass)" \
-            || { echo "❌ Coverage ${PCT}% < ${THRESHOLD}% (fail)"; exit 1; }
+          FILE=coverage/lcov.info
+          if [ ! -f "$FILE" ]; then
+            echo "coverage/lcov.info not found"; echo "Line coverage: 0%"; exit 1
+          fi
+          # Filtra a lib/ (per no comptar framework)
+          awk '
+            /^SF:/ {keep = ($0 ~ /\/lib\//); print; next}
+            /^DA:/ { if (keep) print; next }
+            { print }
+          ' "$FILE" > coverage/lcov.lib.info
+          FILE=coverage/lcov.lib.info
+          total=$(awk -F, '/^DA:/{t++} END{print t+0}' "$FILE")
+          covered=$(awk -F, '/^DA:/{if($2>0) c++} END{print c+0}' "$FILE")
+          pct=0; if [ "${total:-0}" -gt 0 ]; then pct=$(( 100 * covered / total )); fi
+          echo "Line coverage: ${pct}%"
+          if [ "$pct" -lt "$THRESHOLD" ]; then
+            echo "Coverage below threshold ($THRESHOLD%)"; exit 1
+          fi
