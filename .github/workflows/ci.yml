@@ -49,20 +49,27 @@ jobs:
           lcov --remove "$LCOV" "$PROJ/lib/**.g.dart" "$PROJ/lib/firebase_options.dart" -o "$LCOV" || true
           echo "Filtered summary:" && lcov --summary "$LCOV"
 
-      - name: Enforce coverage >= 70%
+      - name: Enforce coverage ≥ 70%
         run: |
           set -e
-          LCOV="coverage/lcov.info"
-          if [ ! -f "$LCOV" ]; then
-            echo "Line coverage: 0%"; exit 1
-          fi
-          PCT=$(lcov --summary "$LCOV" 2>/dev/null | awk '/lines/ {print $2}' | tr -d '%')
-          echo "Line coverage: ${PCT}%"
           THRESHOLD=70
-          if [ -z "$PCT" ]; then echo "Could not parse coverage"; exit 1; fi
-          python - <<'PY'
-import sys, os
-pct = float(os.environ.get("PCT","0"))
-thr = float(os.environ.get("THRESHOLD","70"))
-sys.exit(0 if pct >= thr else 1)
-PY
+          FILE=coverage/lcov.info
+          if [ ! -f "$FILE" ]; then
+            echo "Error: $FILE not found"
+            ls -la coverage || true
+            exit 1
+          fi
+          # Filtra a lib/ i treu fitxers autogenerats
+          lcov --extract "$FILE" "$(pwd)/lib/*" "$(pwd)/lib/**" -o "$FILE" || true
+          lcov --remove  "$FILE" "$(pwd)/lib/**.g.dart" "$(pwd)/lib/firebase_options.dart" -o "$FILE" || true
+          # Línies cobertes
+          LINES=$(lcov --summary "$FILE" 2>/dev/null | awk '/lines[[:space:]]*:/ {print $2}' | tr -d '%')
+          echo "Line coverage: ${LINES}%"
+          # Compara de forma robusta
+          LINES_INT=${LINES%.*}
+          if [ -z "$LINES_INT" ]; then
+            echo "Parse error reading coverage"; exit 1
+          fi
+          if [ "$LINES_INT" -lt "$THRESHOLD" ]; then
+            echo "Coverage gate failed (need ≥ ${THRESHOLD}%)"; exit 1
+          fi
