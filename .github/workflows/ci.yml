@@ -31,31 +31,36 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y lcov
 
       - name: Test with coverage
-        run: |
-          flutter test --coverage
-          ls -lah coverage || true
+        run: flutter test --coverage
 
-      - name: Filter coverage to project lib
+      - name: Filter coverage to lib
         run: |
           set -e
-          lcov --extract coverage/lcov.info "$(pwd)/lib/*" "$(pwd)/lib/**" -o coverage/lcov.info || true
-          lcov --remove  coverage/lcov.info "$(pwd)/lib/**.g.dart" "$(pwd)/lib/firebase_options.dart" -o coverage/lcov.info || true
-          lcov --summary coverage/lcov.info
+          LCOV="coverage/lcov.info"
+          PROJ="$(pwd)"
+          if [ ! -f "$LCOV" ]; then
+            echo "ERROR: $LCOV not found"; exit 1
+          fi
+          # Inclou tot lib/**
+          lcov --extract "$LCOV" "$PROJ/lib/*" "$PROJ/lib/**" -o "$LCOV" || true
+          # Exclou generats i firebase_options.dart
+          lcov --remove "$LCOV" "$PROJ/lib/**.g.dart" "$PROJ/lib/firebase_options.dart" -o "$LCOV" || true
+          echo "Filtered summary:" && lcov --summary "$LCOV"
 
       - name: Enforce coverage >= 70%
-        if: ${{ github.event_name != 'pull_request' || github.event.pull_request.number != 1 }}
-        shell: bash
         run: |
           set -e
-          FILE="coverage/lcov.info"
-          if [ ! -f "$FILE" ]; then
-            echo "Error: $FILE not found"; exit 1
+          LCOV="coverage/lcov.info"
+          if [ ! -f "$LCOV" ]; then
+            echo "Line coverage: 0%"; exit 1
           fi
-          # Extreu percentatge de línies cobertes de lcov --summary
-          PCT=$(lcov --summary "$FILE" 2>/dev/null | awk '/lines/ {print $(NF-1)}' | tr -d '%')
-          echo "Line coverage: ${PCT:-0}%"
-          if ! [[ "$PCT" =~ ^[0-9]+([.][0-9]+)?$ ]]; then
-            echo "Error: Failed to parse coverage percentage from lcov output."; exit 1
-          fi
+          PCT=$(lcov --summary "$LCOV" 2>/dev/null | awk '/lines/ {print $2}' | tr -d '%')
+          echo "Line coverage: ${PCT}%"
           THRESHOLD=70
-          awk -v l="$PCT" -v t="$THRESHOLD" 'BEGIN{exit (l+0<t)}'
+          if [ -z "$PCT" ]; then echo "Could not parse coverage"; exit 1; fi
+          python - <<'PY'
+import sys, os
+pct = float(os.environ.get("PCT","0"))
+thr = float(os.environ.get("THRESHOLD","70"))
+sys.exit(0 if pct >= thr else 1)
+PY
