@@ -33,29 +33,24 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y lcov
 
       - name: Test with coverage
-        run: flutter test --coverage
+        run: flutter test --coverage --coverage-path coverage/lcov.info
 
 
       - name: Enforce coverage ≥ 70%
-        env:
-          THRESHOLD: 70
         run: |
           set -euo pipefail
-          FILE=coverage/lcov.info
-          if [ ! -f "$FILE" ]; then
-            echo "coverage/lcov.info not found"; echo "Line coverage: 0%"; exit 1
+          LCOV="coverage/lcov.info"
+          if [ ! -f "$LCOV" ]; then
+            echo "::error::Missing $LCOV. Did tests run with --coverage?"
+            exit 1
           fi
-          # Filtra a lib/ (per no comptar framework)
-          awk '
-            /^SF:/ {keep = ($0 ~ /\/lib\//); print; next}
-            /^DA:/ { if (keep) print; next }
-            { print }
-          ' "$FILE" > coverage/lcov.lib.info
-          FILE=coverage/lcov.lib.info
-          total=$(awk -F, '/^DA:/{t++} END{print t+0}' "$FILE")
-          covered=$(awk -F, '/^DA:/{if($2>0) c++} END{print c+0}' "$FILE")
-          pct=0; if [ "${total:-0}" -gt 0 ]; then pct=$(( 100 * covered / total )); fi
-          echo "Line coverage: ${pct}%"
-          if [ "$pct" -lt "$THRESHOLD" ]; then
-            echo "Coverage below threshold ($THRESHOLD%)"; exit 1
-          fi
+          awk -v threshold=70 '
+            BEGIN { hit=0; total=0; inlib=0 }
+            /^SF:/ { inlib = ($0 ~ /^SF:lib\// || $0 ~ /\/lib\//) ? 1 : 0; next }
+            inlib && /^DA:/ { split($0,a,":"); split(a[2],b,","); total++; if (b[2] > 0) hit++ }
+            END {
+              if (total==0) { print "Line coverage: 0%"; print "No lines under lib/ found in coverage. Check test imports (package:<app>/...)"; exit 1 }
+              pct = (100.0*hit/total)
+              printf("Line coverage: %.1f%%\n", pct)
+              if (pct + 1e-9 < threshold) { print "Coverage below threshold (" threshold "%)"; exit 1 }
+            }' "$LCOV"
