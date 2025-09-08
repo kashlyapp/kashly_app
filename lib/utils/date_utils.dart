@@ -3,7 +3,7 @@ bool isLeapYear(int year) =>
 
 DateTime parseYMD(String ymd) {
   final parts = ymd.split('-');
-  if (parts.length != 3) throw FormatException('bad ymd');
+  if (parts.length != 3) throw const FormatException('bad ymd');
   return DateTime(
     int.parse(parts[0]),
     int.parse(parts[1]),
