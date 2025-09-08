@@ -18,19 +18,15 @@ jobs:
         with:
           flutter-version: "3.24.0"
 
-<<<<<<< HEAD
       - name: Flutter version
         run: flutter --version
 
-=======
       # Dependències
->>>>>>> 8fea830 (fix(ci): sync local changes before rebase)
       - name: Pub get
         run: flutter pub get
 
       # Analyzer lleuger per evitar problemes de plugins
       - name: Analyze
-<<<<<<< HEAD
         run: flutter analyze
 
       - name: Test with coverage (lcov)
@@ -99,76 +95,3 @@ jobs:
             fi
             exit $code
           }
-=======
-        run: dart analyze
-
-      # IMPORTANT: lcov abans de manipular coverage
-      - name: Install lcov
-        run: sudo apt-get update && sudo apt-get install -y lcov
-
-      # Tests amb cobertura (guarda a coverage/lcov.info)
-      - name: Test with coverage
-        run: flutter test --coverage --coverage-path coverage/lcov.info
-
-      # Diagnòstic: mostra capçaleres i SF de coverage
-      - name: Debug: print coverage headers
-        shell: bash
-        run: |
-          set -euo pipefail
-          LCOV="coverage/lcov.info"
-          if [ ! -f "$LCOV" ]; then
-            echo "::error::Missing $LCOV"
-            exit 1
-          fi
-          echo "=== First 40 lines of $LCOV ==="
-          sed -n '1,40p' "$LCOV" || true
-          echo "=== SF entries under lib/ (first 80) ==="
-          grep -n '^SF:' "$LCOV" | sed -n '1,80p' || true
-          echo "=== SF entries under lib/utils/ ==="
-          grep -n '^SF:.*lib/utils/' "$LCOV" || true
-
-      # Filtra cobertura a lib/ i exclou generats
-      - name: Filter coverage to lib
-        shell: bash
-        run: |
-          set -euo pipefail
-          LCOV="coverage/lcov.info"
-          if [ ! -f "$LCOV" ]; then
-            echo "::error::Missing $LCOV"
-            exit 1
-          fi
-          # Mantén només fitxers de lib/
-          lcov --extract "$LCOV" "$(pwd)/lib/*" "$(pwd)/lib/**" -o "$LCOV"
-          # Exclou generats i firebase_options
-          lcov --remove "$LCOV" "$(pwd)/lib/**.g.dart" "$(pwd)/lib/firebase_options.dart" -o "$LCOV" || true
-          echo "=== Summary after extract/remove ==="
-          lcov --summary "$LCOV" || true
-
-      # Enforce >=70% només sobre lib/utils/
-      - name: Enforce coverage ≥ 70% (utils-only, robust awk)
-        shell: bash
-        run: |
-          set -euo pipefail
-          LCOV="coverage/lcov.info"
-          TARGET="lib/utils/"
-          if [ ! -f "$LCOV" ]; then
-            echo "::error::Missing $LCOV"
-            exit 1
-          fi
-          awk -v threshold=70 -v target="$TARGET" '
-            BEGIN { hit=0; total=0; files=0; in_tgt=0 }
-            /^SF:/ { in_tgt = (index($0, target) > 0); if (in_tgt) files++; next }
-            in_tgt && /^DA:/ {
-              split($0,a,":"); split(a[2],b,",");
-              total++; if (b[2] > 0) hit++;
-              next
-            }
-            END {
-              if (files==0) { printf("Line coverage: 0%%\nNo SF under %s\n", target); exit 1 }
-              if (total==0) { printf("Line coverage: 0%%\nNo DA lines under %s\n", target); exit 1 }
-              pct = (100.0*hit/total);
-              printf("Matched files: %d  Lines: %d  Hit: %d\n", files, total, hit);
-              printf("Line coverage: %.1f%%\n", pct);
-              if (pct + 1e-9 < threshold) { printf("Coverage below threshold (%d%%)\n", threshold); exit 1 }
-            }' "$LCOV"
->>>>>>> 8fea830 (fix(ci): sync local changes before rebase)
