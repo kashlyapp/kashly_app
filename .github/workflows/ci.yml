@@ -21,11 +21,9 @@ jobs:
       - name: Flutter version
         run: flutter --version
 
-      # Dependències
       - name: Pub get
         run: flutter pub get
 
-      # Analyzer lleuger per evitar problemes de plugins
       - name: Analyze
         run: flutter analyze
 
@@ -45,8 +43,8 @@ jobs:
           echo "== lcov.info head (first 80 lines) =="
           if [ -f coverage/lcov.info ]; then head -n 80 coverage/lcov.info; else echo "coverage/lcov.info NOT FOUND"; fi
           echo ""
-          echo "== SF lines under lib/ (first 50) =="
-          if [ -f coverage/lcov.info ]; then awk -F':' '/^SF:/ && $2 ~ /\/lib\// {print $0}' coverage/lcov.info | head -n 50; fi
+          echo "== SF lines containing lib/ (first 50) =="
+          if [ -f coverage/lcov.info ]; then awk -F':' '/^SF:/ && ($2 ~ /(^|\/)lib\//) {print $0}' coverage/lcov.info | head -n 50; fi
 
       # ENFORCEMENT: càlcul robust directament sobre lcov.info, sense lcov --remove
       - name: Enforce coverage >= 70% (AWK over lib/)
@@ -64,8 +62,8 @@ jobs:
             # SF:<path>
             /^SF:/ {
               path = substr($0,4)
-              # Inclou només fitxers sota lib/ i exclou *.g.dart i firebase_options.dart
-              in_lib = (path ~ /\/lib\//) && !(path ~ /\.g\.dart$/) && !(path ~ /\/firebase_options\.dart$/)
+              # Inclou tant rutes relatives "lib/..." com absolutes ".../lib/..."
+              in_lib = (path ~ /(^|\/)lib\//) && !(path ~ /\.g\.dart$/) && !(path ~ /(^|\/)lib\/firebase_options\.dart$/)
               if (in_lib) files++
               next
             }
