@@ -1,10 +1,10 @@
 name: CI
+
 on:
-  pull_request:
-    types: [opened, synchronize, reopened]
-    branches: [main]
   push:
-    branches: [main]
+    branches: ["**"]
+  pull_request:
+    branches: ["main"]
 
 jobs:
   build:
@@ -13,14 +13,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Flutter
+      - name: Setup Flutter 3.24.0
         uses: subosito/flutter-action@v2
         with:
           flutter-version: "3.24.0"
 
-  # opcional: imprimir versió de Flutter
-  #- name: Flutter version
-  #  run: flutter --version
+      - name: Flutter version
+        run: flutter --version
 
       - name: Pub get
         run: flutter pub get
@@ -28,41 +27,69 @@ jobs:
       - name: Analyze
         run: flutter analyze
 
-      # IMPORTANT: instal·lar lcov ABANS de llegir coverage (si no està present)
-      - name: Install lcov
-        run: sudo apt-get update && sudo apt-get install -y lcov
-
-      - name: Test with coverage
-        run: flutter test --coverage
-
-      - name: Filter coverage to lib
+      - name: Test with coverage (lcov)
         run: |
-          set -e
-          LCOV="coverage/lcov.info"
-          PROJ="$(pwd)"
-          if [ ! -f "$LCOV" ]; then
-            echo "ERROR: $LCOV not found"; exit 1
-          fi
-          # Inclou tot lib/**
-          lcov --extract "$LCOV" "$PROJ/lib/*" "$PROJ/lib/**" -o "$LCOV" || true
-          # Exclou generats i firebase_options.dart
-          lcov --remove "$LCOV" "$PROJ/lib/**.g.dart" "$PROJ/lib/firebase_options.dart" -o "$LCOV" || true
-          echo "Filtered summary:" && lcov --summary "$LCOV"
+          flutter test --coverage --coverage-path coverage/lcov.info
+          ls -lah coverage || true
 
-      - name: Enforce coverage >= 70%
+      # DEBUG: imprimeix capçaleres LCOV i fitxers sota lib/
+      - name: Debug coverage headers & lib listing
+        if: always()
+        shell: bash
         run: |
-          set -e
-          LCOV="coverage/lcov.info"
-          if [ ! -f "$LCOV" ]; then
-            echo "Line coverage: 0%"; exit 1
-          fi
-          PCT=$(lcov --summary "$LCOV" 2>/dev/null | awk '/lines/ {print $2}' | tr -d '%')
-          echo "Line coverage: ${PCT}%"
+          echo "== LIB files (tracked) =="
+          git ls-files 'lib/**/*.dart' | sed 's/^/LIB: /' || true
+          echo ""
+          echo "== lcov.info head (first 80 lines) =="
+          if [ -f coverage/lcov.info ]; then head -n 80 coverage/lcov.info; else echo "coverage/lcov.info NOT FOUND"; fi
+          echo ""
+          echo "== SF lines containing lib/ (first 50) =="
+          if [ -f coverage/lcov.info ]; then awk -F':' '/^SF:/ && ($2 ~ /(^|\/)lib\//) {print $0}' coverage/lcov.info | head -n 50; fi
+
+      # ENFORCEMENT: càlcul robust directament sobre lcov.info, sense lcov --remove
+      - name: Enforce coverage >= 70% (AWK over lib/)
+        shell: bash
+        run: |
+          set -euo pipefail
+          FILE="coverage/lcov.info"
           THRESHOLD=70
-          if [ -z "$PCT" ]; then echo "Could not parse coverage"; exit 1; fi
-          python - <<'PY'
-import sys, os
-pct = float(os.environ.get("PCT","0"))
-thr = float(os.environ.get("THRESHOLD","70"))
-sys.exit(0 if pct >= thr else 1)
-PY
+          if [ ! -f "$FILE" ]; then
+            echo "Error: $FILE not found"; exit 1
+          fi
+
+          awk -v threshold="$THRESHOLD" '
+            BEGIN{in_lib=0; total=0; covered=0; files=0}
+            # SF:<path>
+            /^SF:/ {
+              path = substr($0,4)
+              # Inclou tant rutes relatives "lib/..." com absolutes ".../lib/..."
+              in_lib = (path ~ /(^|\/)lib\//) && !(path ~ /\.g\.dart$/) && !(path ~ /(^|\/)lib\/firebase_options\.dart$/)
+              if (in_lib) files++
+              next
+            }
+            # DA:<line>,<hits>
+            in_lib && /^DA:/ {
+              split($0,a,":"); split(a[2],b,",")
+              total++
+              if (b[2] + 0 > 0) covered++
+              next
+            }
+            END{
+              if (files==0 || total==0){
+                print "No SF under lib/ (after exclusions) or no DA lines."
+                exit 2
+              }
+              pct = (covered*100.0)/total
+              printf("Line coverage: %.2f%% (%d/%d)\n", pct, covered, total)
+              if (pct + 0 < threshold){ exit 3 } else { exit 0 }
+            }
+          ' "$FILE" \
+          || {
+            code=$?
+            if [ $code -eq 2 ]; then
+              echo "No SF under lib/"
+            elif [ $code -eq 3 ]; then
+              echo "Coverage below threshold"
+            fi
+            exit $code
+          }
