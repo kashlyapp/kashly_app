@@ -1,5 +1,5 @@
 <!-- markdownlint-disable MD012 MD029 MD032 MD007 MD058 -->
-
+ <!-- chore: trigger CI -->
 # kashly_app
 
 A new Flutter project.
